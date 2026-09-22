@@ -208,7 +208,12 @@ References: `.../parakeet-cpp-gguf/tdt-0.6b-v3-{f16,q8_0}.gguf`
    (511 → 487 MB, −4.6%) but destroy the SIMD structure (5 doesn't divide 128 →
    no aligned digit planes) and force a full kernel rewrite. The F32 payload
    (377 MB, conv/norms/featurizer) dwarfs it and is a loader constraint shared
-   with stock. Consider documenting `packing` in a GGUF KV.
+   with stock. ✅ **The `packing` KV is now written** (38 KVs, was 33):
+   `general.description`, `parakeet.quant.type` = TRQ1_0,
+   `parakeet.quant.packing` = strided-32, `parakeet.quant.bpw` = 2.125,
+   `parakeet.quant.source_packing` = contiguous-5 — so the packing choice and
+   derivation are machine-readable instead of only inferable from block code.
+   Regeneration verified transcript-byte-identical on two clips.
 2. **Docs fixed:** stale `ggml.h` enum comment and converter docstring (both
    still said "5 digits/byte, 1.75 bpw" from the abandoned design).
 3. **Metal** is still absent (only matters for iOS; same `convert.cu`-style
@@ -216,6 +221,29 @@ References: `.../parakeet-cpp-gguf/tdt-0.6b-v3-{f16,q8_0}.gguf`
 4. **NEON kernel** optional — scalar fallback is adequate for mobile today.
 5. Single PR to `mudler/parakeet.cpp` — type + block + converter + kernels +
    `arch-fallback.h` + CUDA path + `test_trq1_vecdot` + docs.
+
+---
+
+## Serving (OpenAI-compatible API — no code needed)
+
+`parakeet-server` already speaks `POST /v1/audio/transcriptions` and is built
+ON by default (`PARAKEET_BUILD_SERVER=ON`); it takes a local `.gguf` path, an
+`http(s)://` URL, a `<name>.gguf`, or an alias. Deployed here:
+
+- Model: `/mnt/Data2/storage/llama_cpp/models/hf/robertbak/parakeet-trq-gguf/redux-trq.gguf`
+- llama-swap entry **`parakeet-trq`** in the `asr` group (config validates,
+  19 models; `-watch-config` reloads). Knobs in `config.yaml`:
+  `${trq-gguf}` and `${trq-device}` (default `cpu` on purpose — the `big` group
+  holds `mem-fraction-static 0.957`; `CUDA0` gives ~6× when nothing big is up).
+- CUDA server: `build-cuda/examples/server/parakeet-server` (one binary serves
+  both devices via `PARAKEET_DEVICE`).
+- Alias `redux-trq` resolves cross-repo to
+  `robertbak/parakeet-trq-gguf/redux-trq.gguf` (needs the HF repo to exist and
+  be **public** — the fetcher uses unauthenticated curl). Until then use the
+  local path.
+
+Measured: CPU 12.7 RTFx, CUDA 77.5 RTFx (6.31×), byte-identical transcript
+via llama-swap vs the CLI.
 
 ---
 

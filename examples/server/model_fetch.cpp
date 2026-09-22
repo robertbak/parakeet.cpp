@@ -31,13 +31,24 @@ const std::vector<std::pair<std::string, std::string>>& model_aliases() {
         {"rnnt-0.6b",         "rnnt-0.6b-f16.gguf"},
         {"rnnt-1.1b",         "rnnt-1.1b-f16.gguf"},
         {"eou-120m",          "realtime_eou_120m-v1-f16.gguf"},
+        // Cross-repo (fork-owned): ternary TRQ1_0 build of parakeet-redux.
+        {"redux-trq",         "robertbak/parakeet-trq-gguf/redux-trq.gguf"},
     };
     return kAliases;
 }
 
-static std::string collective_url(const std::string& filename) {
+static std::string collective_url(const std::string& spec) {
+    // "<owner>/<repo>/<file>" resolves inside that repo, so a fork can serve
+    // its own GGUFs without repointing kCollectionRepo (which would break the
+    // shared aliases above). Anything else resolves inside kCollectionRepo.
+    const size_t first = spec.find('/');
+    const size_t last  = spec.rfind('/');
+    if (first != std::string::npos && last != std::string::npos && last > first) {
+        return std::string("https://huggingface.co/") + spec.substr(0, last) +
+               "/resolve/main/" + spec.substr(last + 1);
+    }
     return std::string("https://huggingface.co/") + kCollectionRepo +
-           "/resolve/main/" + filename;
+           "/resolve/main/" + spec;
 }
 
 static std::string basename_of(const std::string& url) {
@@ -78,7 +89,13 @@ bool resolve_model(const std::string& arg, ModelSource& out, std::string& err) {
         if (a.first == arg) {
             out.kind = ModelSource::kUrl;
             out.value = collective_url(a.second);
-            out.cache_name = a.second;
+            // A cross-repo value is "owner/repo/file"; the cache key must stay a
+            // flat filename (cache_name is joined onto cache_dir verbatim).
+            out.cache_name = basename_of(a.second);
+            if (!safe_name(out.cache_name)) {
+                err = "unsafe model filename for alias '" + arg + "': " + out.cache_name;
+                return false;
+            }
             return true;
         }
     }

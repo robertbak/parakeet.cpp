@@ -52,6 +52,11 @@ filename in the `mudler/parakeet-cpp-gguf` repo, or one of these aliases:
 | `rnnt-0.6b`          | RNN-T 0.6B (f16)                        |
 | `rnnt-1.1b`          | RNN-T 1.1B (f16)                        |
 | `eou-120m`           | realtime EOU 120M (f16)                 |
+| `redux-trq`          | parakeet-redux ternary TRQ1_0, 2.125 bpw |
+
+An alias value may be `<owner>/<repo>/<file>` to resolve inside a repo other
+than the shared collection -- that is how `redux-trq` is served from this
+fork's own Hugging Face repo without repointing `kCollectionRepo`.
 
 Downloads use `curl` (or `wget`). If neither is on `PATH`, download the `.gguf`
 yourself and pass the local path.

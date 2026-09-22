@@ -211,6 +211,17 @@ def main():
     enc = cfg["encoder_config"]
     w = gguf.GGUFWriter(args.output, "parakeet")
     w.add_string("general.name", "moondream/parakeet-redux")
+    # What this file IS, beyond the source name: the novel quant type, its packing
+    # decision (unrecoverable from metadata otherwise) and the derivation. Stock
+    # tools crash on type 42 rather than reporting it, so spell it out here.
+    w.add_string("general.description",
+                 "moondream/parakeet-redux encoder requantized to "
+                 "GGML_TYPE_TRQ1_0 (ternary, 2.125 bpw, strided-32 packing); "
+                 "conv/norms/featurizer kept F32. Requires ggml with type 42.")
+    w.add_string("parakeet.quant.type",           "TRQ1_0")
+    w.add_string("parakeet.quant.packing",        "strided-32")
+    w.add_float32("parakeet.quant.bpw",           2.125)
+    w.add_string("parakeet.quant.source_packing", "contiguous-5")
     w.add_string("parakeet.arch", "tdt")
     w.add_uint32("parakeet.encoder.feat_in", int(enc["num_mel_bins"]))
     w.add_uint32("parakeet.encoder.d_model", int(enc["hidden_size"]))
