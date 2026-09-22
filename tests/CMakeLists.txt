@@ -6,6 +6,18 @@ function(pk_add_test name)
   set_tests_properties(${name} PROPERTIES SKIP_RETURN_CODE 77)
 endfunction()
 
+# TRQ1_0 (ternary) parity: AVX2 kernel vs scalar generic vs an exact double
+# reference, plus the dequant (to_float) layout. Needs ggml's *internal*
+# headers (ggml-cpu/quants.h, ggml-quants.h), which live under third_party/ggml/src
+# and are not exported PUBLIC by the ggml target, so add that include dir here.
+add_executable(test_trq1_vecdot test_trq1_vecdot.cpp)
+target_include_directories(test_trq1_vecdot PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/third_party
+    ${CMAKE_SOURCE_DIR}/third_party/ggml/src)
+target_link_libraries(test_trq1_vecdot PRIVATE parakeet)
+add_test(NAME test_trq1_vecdot COMMAND test_trq1_vecdot)
+
 pk_add_test(test_smoke)
 pk_add_test(test_nbest_json)
 pk_add_test(test_tdt_beam_core)
